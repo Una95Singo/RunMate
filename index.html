@@ -4,7 +4,7 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <meta name="theme-color" content="#0b0d10" />
-<title>Mile Pace Calculator</title>
+<title>Pace Calculator</title>
 <style>
   :root {
     --bg: #0b0d10;
@@ -145,16 +145,101 @@
 
   .footer { color: var(--muted); font-size: 12px; text-align: center; margin-top: 24px; }
 
+  .dual { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .unit-box {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    background: var(--panel-2);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 12px 14px;
+  }
+  .unit-box input {
+    flex: 1 1 0;
+    min-width: 0;
+    width: 100%;
+    background: transparent;
+    border: 0;
+    outline: 0;
+    color: var(--text);
+    font: 700 26px/1 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-feature-settings: "tnum" 1;
+    caret-color: var(--accent);
+  }
+  .unit-box input::-webkit-outer-spin-button,
+  .unit-box input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+  .unit-box input[type=number] { -moz-appearance: textfield; }
+  .unit-box .u { color: var(--muted); font: 600 14px/1 inherit; letter-spacing: 0.04em; }
+
+  .use-goal {
+    display: inline-block;
+    margin-top: 12px;
+    background: transparent;
+    color: var(--accent);
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    padding: 8px 14px;
+    font: 600 13px/1 inherit;
+    cursor: pointer;
+  }
+  .use-goal:active { transform: scale(0.98); }
+
+  .finish-row { display: grid; grid-template-columns: 1.2fr 1fr; gap: 10px; margin-top: 14px; }
+  .finish-row .stat .v { font-size: 26px; }
+  .finish-row .stat.big-finish .v { font-size: 40px; letter-spacing: -0.02em; }
+  .finish-row .stat .sub-line { color: var(--muted); font-size: 13px; margin-top: 4px; font-variant-numeric: tabular-nums; }
+
+  .splits-list {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-top: 14px;
+  }
+  .splits-list .col {
+    background: var(--panel-2);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 10px 12px;
+    max-height: 360px;
+    overflow-y: auto;
+  }
+  .splits-list .ch {
+    color: var(--muted);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 6px;
+  }
+  .splits-list ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    font: 600 14px/1.5 ui-monospace, monospace;
+    font-feature-settings: "tnum" 1;
+  }
+  .splits-list li {
+    display: flex;
+    justify-content: space-between;
+    border-top: 1px solid var(--line);
+    padding: 5px 0;
+  }
+  .splits-list li:first-child { border-top: 0; }
+  .splits-list li .lbl { color: var(--muted); }
+  .splits-list li.final { color: var(--accent); }
+  .splits-list li.final .lbl { color: var(--accent); }
+
   @media (min-width: 480px) {
     h1 { font-size: 24px; }
     .big { font-size: 64px; }
+    .finish-row .stat.big-finish .v { font-size: 48px; }
   }
 </style>
 </head>
 <body>
   <main class="wrap">
-    <h1>Mile Pace Calculator</h1>
-    <p class="sub">Goal mile time → splits, treadmill speed, easy &amp; race paces.</p>
+    <h1>Pace Calculator</h1>
+    <p class="sub">Mile pace, treadmill speed, and metric ↔ imperial run planning.</p>
 
     <section class="card" aria-label="Goal mile time">
       <label for="min">Goal mile time</label>
@@ -207,6 +292,67 @@
           <div class="lbl">Race<span class="delta">−30s/mi</span></div>
           <div class="pace" id="racePace">7:00</div>
           <div class="speeds"><span id="raceMph">8.6</span> mph &middot; <span id="raceKph">13.8</span> kph</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="card" aria-label="Run planner">
+      <div class="section-title">Plan a run</div>
+
+      <label for="distMi">Distance</label>
+      <div class="dual">
+        <div class="unit-box">
+          <input id="distMi" type="number" inputmode="decimal" step="0.01" min="0" value="4.5" aria-label="distance in miles" />
+          <span class="u">mi</span>
+        </div>
+        <div class="unit-box">
+          <input id="distKm" type="number" inputmode="decimal" step="0.01" min="0" value="7.24" aria-label="distance in kilometres" />
+          <span class="u">km</span>
+        </div>
+      </div>
+      <div class="presets" role="group" aria-label="Distance presets">
+        <button class="preset dist-preset" type="button" data-km="5">5K</button>
+        <button class="preset dist-preset" type="button" data-km="10">10K</button>
+        <button class="preset dist-preset" type="button" data-km="21.0975">½ Mar</button>
+        <button class="preset dist-preset" type="button" data-km="42.195">Marathon</button>
+        <button class="preset dist-preset" type="button" data-mi="1">1 mi</button>
+        <button class="preset dist-preset" type="button" data-mi="3">3 mi</button>
+        <button class="preset dist-preset" type="button" data-mi="5">5 mi</button>
+      </div>
+
+      <label for="paceMi" style="margin-top:16px">Pace</label>
+      <div class="dual">
+        <div class="unit-box">
+          <input id="paceMi" type="text" inputmode="numeric" pattern="[0-9:]*" value="10:00" aria-label="pace per mile, mm:ss" />
+          <span class="u">/mi</span>
+        </div>
+        <div class="unit-box">
+          <input id="paceKm" type="text" inputmode="numeric" pattern="[0-9:]*" value="6:13" aria-label="pace per kilometre, mm:ss" />
+          <span class="u">/km</span>
+        </div>
+      </div>
+      <button class="use-goal" id="useGoalPace" type="button">Use goal pace from above ↑</button>
+
+      <div class="finish-row">
+        <div class="stat big-finish">
+          <div class="k">Finish time</div>
+          <div class="v" id="finish">45:00</div>
+        </div>
+        <div class="stat">
+          <div class="k">Treadmill</div>
+          <div class="v"><span id="planMph">6.0</span> mph</div>
+          <div class="sub-line"><span id="planKph">9.7</span> kph</div>
+        </div>
+      </div>
+
+      <div class="splits-list">
+        <div class="col">
+          <div class="ch">By km</div>
+          <ul id="kmList"></ul>
+        </div>
+        <div class="col">
+          <div class="ch">By mile</div>
+          <ul id="miList"></ul>
         </div>
       </div>
     </section>
@@ -285,7 +431,7 @@
   minEl.addEventListener("blur", () => { minEl.value = clampInt(minEl.value, 0, 59); render(); });
   secEl.addEventListener("blur", () => { secEl.value = clampInt(secEl.value, 0, 59); render(); });
 
-  document.querySelectorAll(".preset").forEach(btn => {
+  document.querySelectorAll(".preset[data-t]").forEach(btn => {
     btn.addEventListener("click", () => {
       const [m, s] = btn.dataset.t.split(":");
       minEl.value = m;
@@ -294,7 +440,122 @@
     });
   });
 
+  // -------- Run planner --------
+  const KM_PER_MI = 1.609344;
+  const distMiEl = $("distMi"), distKmEl = $("distKm");
+  const paceMiEl = $("paceMi"), paceKmEl = $("paceKm");
+
+  function parsePace(str) {
+    const m = String(str).trim().match(/^(\d+):([0-5]?\d)$/);
+    if (!m) return NaN;
+    const sec = parseInt(m[1], 10) * 60 + parseInt(m[2], 10);
+    return sec > 0 ? sec : NaN;
+  }
+
+  function fmtTimeLong(sec) {
+    if (!Number.isFinite(sec) || sec < 0) return "—";
+    const total = Math.round(sec);
+    const h = Math.floor(total / 3600);
+    const m = Math.floor((total % 3600) / 60);
+    const s = total % 60;
+    if (h > 0) return h + ":" + String(m).padStart(2, "0") + ":" + String(s).padStart(2, "0");
+    return m + ":" + String(s).padStart(2, "0");
+  }
+
+  function renderPlan() {
+    const mi = parseFloat(distMiEl.value);
+    const paceSec = parsePace(paceMiEl.value);
+    const finishEl = $("finish"), mphEl = $("planMph"), kphEl = $("planKph");
+    const kmListEl = $("kmList"), miListEl = $("miList");
+
+    const valid = Number.isFinite(mi) && mi > 0 && Number.isFinite(paceSec) && paceSec > 0;
+    if (!valid) {
+      finishEl.textContent = "—";
+      mphEl.textContent = "—";
+      kphEl.textContent = "—";
+      kmListEl.innerHTML = "";
+      miListEl.innerHTML = "";
+      return;
+    }
+
+    const km = mi * KM_PER_MI;
+    const finishSec = paceSec * mi;
+    finishEl.textContent = fmtTimeLong(finishSec);
+
+    const mph = 3600 / paceSec;
+    mphEl.textContent = fmtSpeed(mph);
+    kphEl.textContent = fmtSpeed(mph * KM_PER_MI);
+
+    const paceKmSec = paceSec / KM_PER_MI;
+
+    function buildSplits(total, perUnitSec, unitLabel) {
+      const rows = [];
+      const floor = Math.floor(total);
+      for (let i = 1; i <= floor; i++) {
+        rows.push({ label: i + " " + unitLabel, time: perUnitSec * i });
+      }
+      if (total - floor > 0.005) {
+        rows.push({ label: total.toFixed(2) + " " + unitLabel, time: perUnitSec * total });
+      }
+      const last = rows.length - 1;
+      return rows.map((r, idx) =>
+        '<li' + (idx === last ? ' class="final"' : '') + '>' +
+        '<span class="lbl">' + r.label + '</span>' +
+        '<span>' + fmtTimeLong(r.time) + '</span></li>'
+      ).join("");
+    }
+
+    kmListEl.innerHTML = buildSplits(km, paceKmSec, "km");
+    miListEl.innerHTML = buildSplits(mi, paceSec, "mi");
+  }
+
+  distMiEl.addEventListener("input", () => {
+    const v = parseFloat(distMiEl.value);
+    if (Number.isFinite(v) && v >= 0) distKmEl.value = (v * KM_PER_MI).toFixed(2);
+    renderPlan();
+  });
+  distKmEl.addEventListener("input", () => {
+    const v = parseFloat(distKmEl.value);
+    if (Number.isFinite(v) && v >= 0) distMiEl.value = (v / KM_PER_MI).toFixed(2);
+    renderPlan();
+  });
+  paceMiEl.addEventListener("input", () => {
+    const sec = parsePace(paceMiEl.value);
+    if (Number.isFinite(sec)) paceKmEl.value = fmtTime(sec / KM_PER_MI);
+    renderPlan();
+  });
+  paceKmEl.addEventListener("input", () => {
+    const sec = parsePace(paceKmEl.value);
+    if (Number.isFinite(sec)) paceMiEl.value = fmtTime(sec * KM_PER_MI);
+    renderPlan();
+  });
+
+  document.querySelectorAll(".dist-preset").forEach(btn => {
+    btn.addEventListener("click", () => {
+      if (btn.dataset.km) {
+        const km = parseFloat(btn.dataset.km);
+        distKmEl.value = km.toFixed(2);
+        distMiEl.value = (km / KM_PER_MI).toFixed(2);
+      } else if (btn.dataset.mi) {
+        const mi = parseFloat(btn.dataset.mi);
+        distMiEl.value = mi.toFixed(2);
+        distKmEl.value = (mi * KM_PER_MI).toFixed(2);
+      }
+      renderPlan();
+    });
+  });
+
+  $("useGoalPace").addEventListener("click", () => {
+    const T = totalSeconds();
+    if (T > 0) {
+      paceMiEl.value = fmtTime(T);
+      paceKmEl.value = fmtTime(T / KM_PER_MI);
+      renderPlan();
+    }
+  });
+
   render();
+  renderPlan();
 })();
 </script>
 </body>
