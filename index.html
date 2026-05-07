@@ -172,6 +172,11 @@
   .unit-box input[type=number] { -moz-appearance: textfield; }
   .unit-box .u { color: var(--muted); font: 600 14px/1 inherit; letter-spacing: 0.04em; }
 
+  .unit-box.pace-box { gap: 4px; padding: 12px 14px; }
+  .unit-box.pace-box input { text-align: center; flex: 1 1 0; max-width: 2.4em; padding: 0; }
+  .unit-box.pace-box .colon-sm { color: var(--muted); font: 700 26px/1 ui-monospace, monospace; flex: 0 0 auto; }
+  .unit-box.pace-box .u { margin-left: auto; padding-left: 4px; }
+
   .use-goal {
     display: inline-block;
     margin-top: 12px;
@@ -320,14 +325,18 @@
         <button class="preset dist-preset" type="button" data-mi="5">5 mi</button>
       </div>
 
-      <label for="paceMi" style="margin-top:16px">Pace</label>
+      <label for="paceMiMin" style="margin-top:16px">Pace</label>
       <div class="dual">
-        <div class="unit-box">
-          <input id="paceMi" type="text" inputmode="numeric" pattern="[0-9:]*" value="10:00" aria-label="pace per mile, mm:ss" />
+        <div class="unit-box pace-box">
+          <input id="paceMiMin" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="2" value="10" aria-label="pace per mile, minutes" />
+          <span class="colon-sm">:</span>
+          <input id="paceMiSec" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="2" value="00" aria-label="pace per mile, seconds" />
           <span class="u">/mi</span>
         </div>
-        <div class="unit-box">
-          <input id="paceKm" type="text" inputmode="numeric" pattern="[0-9:]*" value="6:13" aria-label="pace per kilometre, mm:ss" />
+        <div class="unit-box pace-box">
+          <input id="paceKmMin" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="2" value="6" aria-label="pace per kilometre, minutes" />
+          <span class="colon-sm">:</span>
+          <input id="paceKmSec" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="2" value="13" aria-label="pace per kilometre, seconds" />
           <span class="u">/km</span>
         </div>
       </div>
@@ -443,13 +452,26 @@
   // -------- Run planner --------
   const KM_PER_MI = 1.609344;
   const distMiEl = $("distMi"), distKmEl = $("distKm");
-  const paceMiEl = $("paceMi"), paceKmEl = $("paceKm");
+  const paceMiMinEl = $("paceMiMin"), paceMiSecEl = $("paceMiSec");
+  const paceKmMinEl = $("paceKmMin"), paceKmSecEl = $("paceKmSec");
 
-  function parsePace(str) {
-    const m = String(str).trim().match(/^(\d+):([0-5]?\d)$/);
-    if (!m) return NaN;
-    const sec = parseInt(m[1], 10) * 60 + parseInt(m[2], 10);
-    return sec > 0 ? sec : NaN;
+  function readPaceSec(minEl, secEl) {
+    const m = clampInt(minEl.value === "" ? 0 : minEl.value, 0, 59);
+    const s = clampInt(secEl.value === "" ? 0 : secEl.value, 0, 59);
+    const total = m * 60 + s;
+    return total > 0 ? total : NaN;
+  }
+
+  function writePace(minEl, secEl, totalSec) {
+    if (!Number.isFinite(totalSec) || totalSec < 0) return;
+    const total = Math.round(totalSec);
+    minEl.value = Math.floor(total / 60);
+    secEl.value = String(total % 60).padStart(2, "0");
+  }
+
+  function padSecOnBlur(el) {
+    if (el.value === "") return;
+    el.value = String(clampInt(el.value, 0, 59)).padStart(2, "0");
   }
 
   function fmtTimeLong(sec) {
@@ -464,7 +486,7 @@
 
   function renderPlan() {
     const mi = parseFloat(distMiEl.value);
-    const paceSec = parsePace(paceMiEl.value);
+    const paceSec = readPaceSec(paceMiMinEl, paceMiSecEl);
     const finishEl = $("finish"), mphEl = $("planMph"), kphEl = $("planKph");
     const kmListEl = $("kmList"), miListEl = $("miList");
 
@@ -519,15 +541,28 @@
     if (Number.isFinite(v) && v >= 0) distMiEl.value = (v / KM_PER_MI).toFixed(2);
     renderPlan();
   });
-  paceMiEl.addEventListener("input", () => {
-    const sec = parsePace(paceMiEl.value);
-    if (Number.isFinite(sec)) paceKmEl.value = fmtTime(sec / KM_PER_MI);
+  function onPaceMiInput() {
+    const sec = readPaceSec(paceMiMinEl, paceMiSecEl);
+    if (Number.isFinite(sec)) writePace(paceKmMinEl, paceKmSecEl, sec / KM_PER_MI);
     renderPlan();
+  }
+  function onPaceKmInput() {
+    const sec = readPaceSec(paceKmMinEl, paceKmSecEl);
+    if (Number.isFinite(sec)) writePace(paceMiMinEl, paceMiSecEl, sec * KM_PER_MI);
+    renderPlan();
+  }
+  paceMiMinEl.addEventListener("input", onPaceMiInput);
+  paceMiSecEl.addEventListener("input", onPaceMiInput);
+  paceKmMinEl.addEventListener("input", onPaceKmInput);
+  paceKmSecEl.addEventListener("input", onPaceKmInput);
+
+  [paceMiSecEl, paceKmSecEl].forEach(el => {
+    el.addEventListener("blur", () => { padSecOnBlur(el); });
   });
-  paceKmEl.addEventListener("input", () => {
-    const sec = parsePace(paceKmEl.value);
-    if (Number.isFinite(sec)) paceMiEl.value = fmtTime(sec * KM_PER_MI);
-    renderPlan();
+  [paceMiMinEl, paceKmMinEl].forEach(el => {
+    el.addEventListener("blur", () => {
+      if (el.value !== "") el.value = clampInt(el.value, 0, 59);
+    });
   });
 
   document.querySelectorAll(".dist-preset").forEach(btn => {
@@ -548,8 +583,8 @@
   $("useGoalPace").addEventListener("click", () => {
     const T = totalSeconds();
     if (T > 0) {
-      paceMiEl.value = fmtTime(T);
-      paceKmEl.value = fmtTime(T / KM_PER_MI);
+      writePace(paceMiMinEl, paceMiSecEl, T);
+      writePace(paceKmMinEl, paceKmSecEl, T / KM_PER_MI);
       renderPlan();
     }
   });
